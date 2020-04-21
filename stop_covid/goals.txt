@@ -1,0 +1,14 @@
+1. add collision(to wall, later to each other) sounds (more fun)
+2. add collisions to each other handling - change directions if that happens
+3. add our player(+ add moving and shooting oppotunities to enemies)
+
+
+
+# we lose if enemy hits use too many times, we hit them to kill...
+
+
+* health on enemies which decreases when we hit the bullet
+* randomize moves of enemies to make things a bit harder...(how? when?...)
+* creating and adding new enemies from time to time(to make things harder) 
+* adding different enemies(colors, speeds, sizes...)
+* sound effect for all important events(shooting, explosion, ... loosing game...)
