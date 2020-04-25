@@ -4,9 +4,10 @@ import random
 import time
 import numpy as np
 import re
+import math
 
 # define things
-WIDTH = 320
+WIDTH = 720
 HEIGHT = 480
 SCREEN_SIZE = (WIDTH, HEIGHT)
 BG_COLOR = (20, 20, 20)
@@ -41,7 +42,9 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
         self.mask = pygame.mask.from_surface(self.img)
-        self.mass = 4/3 * np.pi * (int(re.search(r'(\d{1,3})\.png',img).group(1)) // 2 )**3
+        # self.mass = 4/3 * np.pi * (int(re.search(r'(\d{1,3})\.png',img).group(1)) // 2 )**3
+        self.radius = int(re.search(r'(\d{1,3})\.png',img).group(1)) // 2 
+        self.mass = self.radius**3
 
         self.speed_x = speed_x
         self.speed_y = speed_y
@@ -49,13 +52,23 @@ class Enemy(pygame.sprite.Sprite):
         self.update_y_width = self.rect.height + abs(self.speed_y)
 
 
-
     def get_mass(self):
         return self.mass
 
+    def set_center(self, x, y):
+        self.rect.center = (x, y)
 
-    def get_speed(self):
-        return (self.speed_x, self.speed_y)
+    def get_center_x(self):
+        return self.rect.center[0]
+
+    def get_center_y(self):
+        return self.rect.center[1]
+
+    def get_speed_x(self):
+        return self.speed_x
+
+    def get_speed_y(self):
+        return self.speed_y
 
 
     def set_speed(self, x_num, y_num):
@@ -68,7 +81,7 @@ class Enemy(pygame.sprite.Sprite):
 
 
     def increase_speed_by(self, delta_x, delta_y):
-        x, y = self.get_speed()
+        x, y = self.get_speed_x(), self.get_speed_y()
         self.set_speed(x + delta_x, y + delta_y)
 
 
@@ -91,12 +104,6 @@ class Enemy(pygame.sprite.Sprite):
         new_x = self.rect.x + self.speed_x
         new_y = self.rect.y + self.speed_y
 
-        # x, y, width, height
-        # if random.randint(1, 4) == 2: breakpoint()
-
-        # X
-        # update_region[0] += -self.speed_x
-
         update_region = [
                         [new_x, self.rect.x][self.speed_x > 0] ,
                         [new_y, self.rect.y][self.speed_y > 0] ,
@@ -104,42 +111,56 @@ class Enemy(pygame.sprite.Sprite):
                         self.update_y_width
                         ]
 
-        # update_region = self.rect[:]
-        # update_region[2] += self.speed_x
-        # update_region[3] += self.speed_y
-
-        # Y
-        # update_region[1] += -self.speed_y
-
         # screen borders
         if not 0 <= new_x <= (WIDTH - self.rect.width):
-            # breakpoint()
             new_x = min(new_x, WIDTH - self.rect.width)
             new_x = max(new_x, 0)
-            # print('X collided')
             self.reverse_x_speed()
 
         if not 0 <= new_y <= (HEIGHT - self.rect.height):
-            # breakpoint()
             new_y = min(new_y, HEIGHT - self.rect.height)
             new_y = max(new_y, 0)
-            # print('Y collided')
             self.reverse_y_speed()
 
         self.rect.x = new_x
         self.rect.y = new_y
-        # print('New positions:     ', list(self.rect))
 
         self.draw()
-
         
-        # print('Update this region:', update_region)
         return update_region
+
+
+    def collide(self, other):
+        '''
+        update speeds if collision happens
+        '''
+        dx = self.get_center_x() - other.get_center_x()
+        dy = self.get_center_y() - other.get_center_y()
+
+        distance = math.hypot(dx, dy)
+
+
+        if distance < self.radius + other.radius:
+            tangent = math.atan2(dy, dx)
+            # not sure
+            angle_1 = np.arctan2(self.get_center_y(), self.get_center_x())
+            angle_2 = np.arctan2(other.get_center_y(), other.get_center_x())
+            ####
+            speed_1 = (self.get_speed_x(), self.get_speed_y())
+            speed_2 = (other.get_speed_x(), other.get_speed_y())
+            self.set_speed(*speed_2)
+            other.set_speed(*speed_1)
+
+            # correction
+            angle = 0.5 * math.pi + tangent
+            self.set_center(self.get_center_x() + math.sin(angle), self.get_center_y() - math.cos(angle))
+            other.set_center(other.get_center_x() - math.sin(angle), other.get_center_y() + math.cos(angle))
+            # print('Boom')
 
 
 
 # def main():        
-enemies_num = 5
+enemies_num = 8
 enemy_pics = [
                 # 'img/enemy_16.png',
                 # 'img/enemy_32.png',
@@ -158,11 +179,10 @@ enemies = [
                 screen=screen,
                 # x=random.choice(range((WIDTH // enemies_num) *i, (WIDTH // enemies_num)  * (i+1))),
                 # y=random.choice(range((HEIGHT // enemies_num) *i, (HEIGHT // enemies_num)  * (i+1))),
-
                 x=random.choice(range(WIDTH)),
                 y=random.choice(range(HEIGHT)),
-                speed_x=random.randint(1, 3),
-                speed_y=random.randint(1, 3),
+                speed_x=random.randint(1, 10),
+                speed_y=random.randint(1, 10),
                 img=enemy_pics[i],
                 groups=ALL_SPRITES,
                 )
@@ -183,31 +203,19 @@ while run:
     pygame.time.wait(1000 // FPS)
     # time.sleep(1000 // FPS / 1000)
 
+    # EXIT
     for event in pygame.event.get():
         if event.type == pygame.QUIT: run = 0
 
+    # UPDATE
     screen.fill(BG_COLOR)
-    # pygame.display.update()
 
-    # redraw enemies
-    for enemy in enemies:
-        # screen.fill(BG_COLOR, enemy.rect)
-        update_region = enemy.move()
-        
-        # pygame.display.update(update_region)
-
-        # collisions
-        ALL_SPRITES.remove(enemy)
-        collided = pygame.sprite.spritecollide(enemy, ALL_SPRITES, False, pygame.sprite.collide_mask)
-
-        if collided:
-            enemy.reverse_y_speed()
-            enemy.reverse_x_speed()
-
-        ALL_SPRITES.add(enemy)
-
-
+    for index, enemy in enumerate(enemies):
+        enemy.move()
+        for enemy_2 in enemies[index + 1:]:
+            enemy.collide(enemy_2)
     pygame.display.update()
+
     # redraw player
 
 pygame.quit()
