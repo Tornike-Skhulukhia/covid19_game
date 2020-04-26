@@ -9,11 +9,14 @@ import math
 # define things
 WIDTH = 720
 HEIGHT = 480
-SCREEN_SIZE = (WIDTH, HEIGHT)
+INFOBAR_HEIGHT = 50
+
+SCREEN_SIZE = (WIDTH, HEIGHT + INFOBAR_HEIGHT)
 BG_COLOR = (20, 20, 20)
 
 # initialize
 pg.display.init()
+pg.font.init()
 
 # pg.mixer.pre_init(44100, -16, 1, 512)
 # pg.mixer.init()
@@ -162,13 +165,23 @@ class Enemy(pg.sprite.Sprite):
             other.set_center(other.get_center_x() - math.sin(angle), other.get_center_y() + math.cos(angle))
             # print('Boom')
 
-class Player:
 
-    def __init__(self, screen, enemies, speed=5, shoot_interval=0.5, bullet_speed=10,):
+class Player:
+    def __init__(self,
+                 screen,
+                 enemies,
+                 speed=5,
+                 shoot_interval=0.5,
+                 score=0,
+                 life=100,
+                 level=1,
+                 img='img/spaceship_64.png',
+                 bullet_speed=10,):
         global WIDTH, HEIGHT
 
         self.screen = screen
-        self.img = pg.image.load('img/spaceship_64.png')
+        self.img = pg.image.load(img)
+        self.mask = pg.mask.from_surface(self.img)
         self.rect = self.img.get_rect()
         self.rect.x = WIDTH // 2 - (self.rect.width / 2)
         self.rect.y = HEIGHT - (self.rect.height + 10)
@@ -187,9 +200,34 @@ class Player:
 
         self.enemies = enemies
 
+        self.score = score
+        self.level = level
+        self.life = life
+
+        self.created_time = time.time()
+
+    def draw_meta_infobar(self):
+        global HEIGHT, WIDTH, INFOBAR_HEIGHT
+
+        font = pg.font.Font(None, 36)
+        text = font.render(
+                        f'|   Score: {self.score}   |   Level: {self.level}   |   Life: {self.life}   |',
+                        1, 
+                        (255, 255, 255))
+        textpos = text.get_rect()
+        textpos.centerx = WIDTH / 2
+        textpos.centery = HEIGHT + 15
+        # textpos.centerx = self.screen.get_rect().centerx
+        self.screen.blit(text, textpos)
+
 
     def draw(self):
+        '''
+        draw player and meta infobar
+        '''
         self.screen.blit(self.img, self.rect)
+        self.draw_meta_infobar()
+
 
     def increase_x_pos(self, delta_x):
         new_x = self.rect.x + delta_x
@@ -212,14 +250,25 @@ class Player:
 
     def shoot(self):
         if self.bullet_is_ready():
-            new_bullet = Bullet(screen=self.screen,
+            new_bullet = BulletRedCircullar(screen=self.screen,
                                 x=self.rect.center[0] - 16,
                                 y=self.rect.center[1],
+                                player=self,
                                 enemies=self.enemies,
                                 speed=self.bullet_speed)
             self.visible_bullets.append(new_bullet)
             # print('Fire!')
             self.last_shoot_time = time.time()
+
+    def handle_collision(self):
+        global ENEMY_SPRITES
+
+        collided = pg.sprite.spritecollide(
+                                            self,
+                                            ENEMY_SPRITES,
+                                            False,
+                                            pg.sprite.collide_mask)
+        if collided: self.life -= 1
 
 
     def move(self, pressed_keys=None):
@@ -236,50 +285,105 @@ class Player:
         for index, bullet in enumerate(self.visible_bullets):
             if not bullet.move():
                 self.visible_bullets.pop(index)
+
+        # health
+        self.handle_collision()
         self.draw()
 
 
 class Bullet:
-    def __init__(self, screen, x, y, enemies, speed=20):
+    def __init__(self, screen, x, y, player, enemies, img='img/bullet_32.png', speed=20):
         self.screen = screen
-        self.img = pg.image.load('img/bullet_32.png')
+        self.img = pg.image.load(img)
+        # self.img = pg.image.load('/home/tornike/Desktop/pygame_demos/stop_covid/img/full_images/circular_bullet_red_32.png')
+        self.mask = pg.mask.from_surface(self.img)
         self.rect = self.img.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.speed = speed
         self.enemies = enemies
+        self.player = player
 
     def draw(self):
         self.screen.blit(self.img, self.rect)
 
     def handle_enemies_collision(self):
-        for index, enemy in enumerate(self.enemies):
-            if (enemy.rect.x <= self.rect.x <= (enemy.rect.x + enemy.rect.width) and
-                enemy.rect.y <= self.rect.y <= (enemy.rect.y + enemy.rect.height)):
-                # print('Good Shoot!')
-                self.enemies.pop(index)
+        global ENEMY_SPRITES
+        # new method
+        collided = pg.sprite.spritecollide(
+                                            self,
+                                            ENEMY_SPRITES,
+                                            False,
+                                            pg.sprite.collide_mask)
+        for enemy in collided:
+            self.enemies.remove(enemy)
+            ENEMY_SPRITES.remove(enemy)
+            self.player.score += 1
 
     def move(self):
         self.rect.y -= self.speed
-        self.draw()
         self.handle_enemies_collision()
+        self.draw()
         # True if still visible
         return (self.rect.y - self.rect.height) > -20 
 
+
+class BulletRedCircullar(Bullet):
+    def __init__(self, *args, **kwargs):
+        # breakpoint()
+        kwargs['img'] = '/home/tornike/Desktop/pygame_demos/stop_covid/img/full_images/circular_bullet_red_48.png'
+        # kwargs['img'] = '/home/tornike/Desktop/pygame_demos/stop_covid/img/full_images/circullar_bullet_green_32.png'
+        super().__init__(*args, **kwargs)
+
+        self.speed_x = random.randint(-20, 20)
+        self.speed_y = -random.randint(1, 20)
+
+        # self.img = pg.image.load('/home/tornike/Desktop/pygame_demos/stop_covid/img/full_images/circular_bullet_red_32.png')
+        # self.mask = pg.mask.from_surface(self.img)
+        # self.rect = self.img.get_rect()
+
+    def move(self):
+        '''
+        Solve bug/s here later!!!
+        '''
+        global WIDTH, HEIGHT
+        # breakpoint()
+        new_x = self.rect.x + self.speed_x
+        new_y = self.rect.y + self.speed_y
+
+        # screen borders
+        if not 0 <= new_x <= (WIDTH - self.rect.width):
+            new_x = min(new_x, WIDTH - self.rect.width)
+            new_x = max(new_x, 0)
+            self.speed_x = -self.speed_x
+
+        if not 0 <= new_y <= (HEIGHT - self.rect.height):
+            new_y = min(new_y, HEIGHT - self.rect.height)
+            new_y = max(new_y, 0)
+            self.speed_y = - self.speed_y
+
+        self.rect.x = new_x
+        self.rect.y = new_y
+
+        self.handle_enemies_collision()
+        self.draw()
+        return (self.rect.y - self.rect.height) > -20
+
+
 # def main():        
-enemies_num = 20
+enemies_num = 100
 enemy_pics = [
-                # 'img/enemy_16.png',
-                'img/enemy_32.png',
-                'img/enemy_48.png',
-                'img/enemy_64.png',
-                'img/enemy_84.png',
-                'img/enemy_84.png',
+                'img/enemy_16.png',
+                # 'img/enemy_32.png',
+                # 'img/enemy_48.png',
+                # 'img/enemy_64.png',
+                # 'img/enemy_84.png',
+                # 'img/enemy_84.png',
                 'img/enemy_84.png',
             ] * enemies_num
 
 
-ALL_SPRITES = pg.sprite.Group()
+ENEMY_SPRITES = pg.sprite.Group()
 
 ENEMIES = [
             Enemy(
@@ -287,19 +391,23 @@ ENEMIES = [
                 # x=random.choice(range((WIDTH // enemies_num) *i, (WIDTH // enemies_num)  * (i+1))),
                 # y=random.choice(range((HEIGHT // enemies_num) *i, (HEIGHT // enemies_num)  * (i+1))),
                 x=random.choice(range(WIDTH)),
-                y=random.choice(range(HEIGHT)),
-                speed_x=random.randint(1, 7),
-                speed_y=random.randint(1, 7),
+                y=random.choice(range(HEIGHT - 200)),
+                speed_x=random.randint(1, 3),
+                speed_y=random.randint(1, 3),
                 img=enemy_pics[i],
-                groups=ALL_SPRITES,
+                groups=ENEMY_SPRITES,
                 )
-
             for i in range(enemies_num)]
 
-ALL_SPRITES.add(ENEMIES)
+ENEMY_SPRITES.add(ENEMIES)
 
-player = Player(screen=screen, enemies=ENEMIES, speed=10, shoot_interval=0.5)
-
+player = Player(screen=screen,
+                enemies=ENEMIES,
+                speed=8,
+                bullet_speed=15,
+                shoot_interval=0.01,
+                img='/home/tornike/Desktop/pygame_demos/stop_covid/img/spacecraft_blue_76.png',
+                )
 
 
 
@@ -325,9 +433,14 @@ while run:
 
     # PLAYER
     player.move(pressed_keys=pg.key.get_pressed())
+    if player.life <= 0:
+        print('Game Over, try again...')
+        run = False
+
     if not player.enemies:
         print('Round 1 Completed, to be continued soon...')
-        run = False       
+        run = False
+        # time.sleep(10)
     # SCREEN
     pg.display.update()
 
