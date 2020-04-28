@@ -245,10 +245,10 @@ class Player:
                  shoot_mode='primary',
                  bullet_speed=10,
                  score=0,
-                 life=100,
+                 health=100,
                  level=1,
 
-                 spaceship='',
+                 spaceship='primary',
                  ):
         global WIDTH, HEIGHT
 
@@ -284,8 +284,8 @@ class Player:
         self.enemies = enemies
 
         self.score = score
-        self.level = level
-        self.life = life
+        self.current_level = level
+        self.health = health
 
         self.created_time = time.time()
 
@@ -300,7 +300,7 @@ class Player:
 
         font = pg.font.Font(None, 36)
         text = font.render(
-                        f'|   Score: {self.score}   |   Level: {self.level}   |   Life: {self.life}   |',
+                        f'|   Score: {self.score}   |   Level: {self.current_level}   |   Life: {self.health}   |',
                         1, 
                         (255, 255, 255))
         textpos = text.get_rect()
@@ -368,7 +368,7 @@ class Player:
                                             ENEMY_SPRITES,
                                             False,
                                             pg.sprite.collide_mask)
-        if collided: self.life -= 1
+        if collided: self.health -= 1
 
 
     def move_me_and_my_bullets(self, pressed_keys=None):
@@ -422,49 +422,70 @@ pg.display.set_icon(ICON)
 pg.display.set_caption("StopCovid19")
 
 
-# def main():        
-enemies_num = 20
-enemy_pics = [
-                'img/enemy_16.png',
-                # 'img/enemy_32.png',
-                # 'img/enemy_48.png',
-                # 'img/enemy_64.png',
-                # 'img/enemy_84.png',
-                # 'img/enemy_84.png',
-                'img/enemy_84.png',
-            ] * enemies_num
+# def main():
+
+def get_enemies_for_level(level, enemy_sprites):
+    global screen
+
+    # if level < 3:
+    enemies_num = 20
+
+    enemy_pics = [
+                    'img/enemy_16.png',
+                    # 'img/enemy_32.png',
+                    # 'img/enemy_48.png',
+                    # 'img/enemy_64.png',
+                    # 'img/enemy_84.png',
+                    # 'img/enemy_84.png',
+                    'img/enemy_84.png',
+                ] * enemies_num
+
+    enemies = [
+                Enemy(
+                    screen=screen,
+                    x=random.choice(range(WIDTH)),
+                    y=random.choice(range(HEIGHT - 200)),
+                    speed_x=random.randint(1, 3 + level),
+                    speed_y=random.randint(1, 3 + level),
+                    img=enemy_pics[i],
+                    groups=enemy_sprites,
+                    )
+                for i in range(enemies_num)]
+    return enemies
 
 
+def get_player_for_level(level, enemies, health=100, score=0):
+    global screen
+
+    # here we may add health & scores for specific round completions
+
+    # if level  3:
+    player = Player(screen=screen,
+                    enemies=enemies,
+                    speed=8,
+                    health=health,
+                    score=score,
+                    bullet_speed=15,
+                    shoot_interval=0.5,    # shoot mode will be primary, here we just test different things working
+                    shoot_mode= ['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
+                    level=level,   # very basic logic yet
+                    spaceship=['primary', 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
+                    )
+    return player
+
+
+
+# LET THE GAME BEGIN
 ENEMY_SPRITES = pg.sprite.Group()
 
-ENEMIES = [
-            Enemy(
-                screen=screen,
-                # x=random.choice(range((WIDTH // enemies_num) *i, (WIDTH // enemies_num)  * (i+1))),
-                # y=random.choice(range((HEIGHT // enemies_num) *i, (HEIGHT // enemies_num)  * (i+1))),
-                x=random.choice(range(WIDTH)),
-                y=random.choice(range(HEIGHT - 200)),
-                speed_x=random.randint(1, 3),
-                speed_y=random.randint(1, 3),
-                img=enemy_pics[i],
-                groups=ENEMY_SPRITES,
-                )
-            for i in range(enemies_num)]
+enemies = get_enemies_for_level(1, enemy_sprites=ENEMY_SPRITES)
+player = get_player_for_level(1, enemies=enemies)
 
-ENEMY_SPRITES.add(ENEMIES)
-
-player = Player(screen=screen,
-                enemies=ENEMIES,
-                speed=8,
-                bullet_speed=15,
-                shoot_interval=0.2,
-                shoot_mode='primary',
-                # shoot_mode
-                spaceship='primary',
-                )
+ENEMY_SPRITES.add(enemies)
 
 run = 1
 while run:
+    #############################################
     pg.time.wait(1000 // FPS)
     # time.sleep(1000 // FPS / 1000)
 
@@ -474,23 +495,37 @@ while run:
 
     # UPDATE
     screen.fill(BG_COLOR)
+    #############################################
 
     # ENEMIES
-    for index, enemy in enumerate(ENEMIES):
+    for index, enemy in enumerate(enemies):
         enemy.move()
-        for enemy_2 in ENEMIES[index + 1:]:
+        for enemy_2 in enemies[index + 1:]:
             enemy.collide(enemy_2)
 
     # PLAYER
     player.move_me_and_my_bullets(pressed_keys=pg.key.get_pressed())
-    if player.life <= 0:
+    if player.health <= 0:
         print('Game Over, try again...')
         run = False
 
     if not player.enemies:
-        print('Round 1 Completed, to be continued soon...')
-        run = False
+        # update info and start new round
+        print(f'Round {player.current_level} Completed, Cool!...')
+
+        ENEMY_SPRITES = pg.sprite.Group()
+        enemies = get_enemies_for_level(level=player.current_level + 1, enemy_sprites=ENEMY_SPRITES)
+        player = get_player_for_level(level=player.current_level + 1,
+                                      enemies=enemies,
+                                      health=player.health,
+                                      score=player.score)
+
+        ENEMY_SPRITES.add(enemies)
+
+        # run = False
         # time.sleep(10)
+
+    #############################################
     # SCREEN
     pg.display.update()
 
