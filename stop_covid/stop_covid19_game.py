@@ -428,17 +428,15 @@ def get_enemies_for_level(level, enemy_sprites):
     global screen
 
     # if level < 3:
-    enemies_num = 20
+    enemies_num = 1 + level
 
     enemy_pics = [
                     'img/enemy_16.png',
-                    # 'img/enemy_32.png',
-                    # 'img/enemy_48.png',
-                    # 'img/enemy_64.png',
-                    # 'img/enemy_84.png',
-                    # 'img/enemy_84.png',
+                    'img/enemy_32.png',
+                    'img/enemy_48.png',
+                    'img/enemy_64.png',
                     'img/enemy_84.png',
-                ] * enemies_num
+                ] * (enemies_num // 5 + 3)
 
     enemies = [
                 Enemy(
@@ -447,10 +445,11 @@ def get_enemies_for_level(level, enemy_sprites):
                     y=random.choice(range(HEIGHT - 200)),
                     speed_x=random.randint(1, 3 + level),
                     speed_y=random.randint(1, 3 + level),
-                    img=enemy_pics[i],
+                    # img=enemy_pics[i],
+                    img=img,
                     groups=enemy_sprites,
                     )
-                for i in range(enemies_num)]
+                for i, img in zip(range(enemies_num), random.sample(enemy_pics, enemies_num))]
     return enemies
 
 
@@ -462,14 +461,15 @@ def get_player_for_level(level, enemies, health=100, score=0):
     # if level  3:
     player = Player(screen=screen,
                     enemies=enemies,
-                    speed=8,
+                    speed=8 + (level // 5) * 2,
                     health=health,
                     score=score,
-                    bullet_speed=15,
+                    bullet_speed=15 + (level // 5) * 5,
                     shoot_interval=0.5,    # shoot mode will be primary, here we just test different things working
-                    shoot_mode= ['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
+                    # shoot_mode= ['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
+                    shoot_mode='primary',
                     level=level,   # very basic logic yet
-                    spaceship=['primary', 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
+                    spaceship='primary',  #[ , 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
                     )
     return player
 
