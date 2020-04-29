@@ -165,6 +165,9 @@ class Bullet:
         # True if still visible
         return (self.rect.y - self.rect.height) > -20 
 
+    def set_position(self, x, y):
+        self.rect.x = x
+        self.rect.y = y
 
 
 class BulletCircular(Bullet):
@@ -180,6 +183,7 @@ class BulletCircular(Bullet):
                                     'aliens_red': 'img/red_rounded_aliens_plate_48.png',
                                     'aliens_live': 'img/alien_live_48.png',
                                     'toilet_paper': 'img/toilet_paper_48.png',
+                                    'shield': 'img/facemask_emoji_32.png',
                                     # 'blue': 'img/circular_bullet_red_48.png',
                                 }[self.mode])
         self.mask = pg.mask.from_surface(self.img)
@@ -193,6 +197,7 @@ class BulletCircular(Bullet):
                         'aliens_red': random.randint(-25, 25),
                         'aliens_live': random.randint(-25, 25),
                         'toilet_paper': random.randint(-15, 15),
+                        'shield': 0,
                         }[self.mode]
         self.speed_y = {
                         'red': -random.randint(1, 20),
@@ -201,6 +206,7 @@ class BulletCircular(Bullet):
                         'aliens_red': -random.randint(1, 15),
                         'aliens_live': -random.randint(1, 15),
                         'toilet_paper': -random.randint(1, 10),
+                        'shield': 0,
                         }[self.mode]
 
     def move(self):
@@ -288,6 +294,7 @@ class Player:
         self.health = health
 
         self.created_time = time.time()
+        self.shield_activated_at = 0
 
 
     def change_shoot_mode(self, new_mode):
@@ -346,8 +353,7 @@ class Player:
                                     x=self.rect.center[0] - 16,
                                     y=self.rect.center[1],
                                     player=self,
-                                    enemies=self.enemies,
-                                    speed=self.bullet_speed)
+                                    enemies=self.enemies)
             else:
                 new_bullet = Bullet(screen=self.screen,
                                     x=self.rect.center[0] - 16,
@@ -358,7 +364,48 @@ class Player:
             # print('Fire!')
             self.last_shoot_time = time.time()
             self.used_bullets_num += 1
-            # print(self.used_bullets_num)
+
+
+    def activate_shield(self):
+        if time.time() - self.shield_activated_at < 10: return # use 10 secs
+
+        self.change_shoot_mode("shield")
+        self.shield_activated_at = time.time()
+
+        for i in range(8):
+            shield_bullet = BulletCircular(
+                                mode=self.shoot_mode,  # shield
+                                screen=self.screen,
+                                x=100,
+                                y=100,
+                                player=self,
+                                enemies=self.enemies)
+            self.visible_bullets.append(shield_bullet)
+        self.last_shoot_time += time.time() + 999_999_999
+
+
+    def remove_shield(self):
+        for i in [i for i in self.visible_bullets if isinstance(i, BulletCircular) and i.mode == "shield"]:
+            self.visible_bullets.remove(i)
+
+        self.change_shoot_mode('primary')
+        self.last_shoot_time = time.time() - 999
+        self.shield_activated_at = 0
+
+
+    def make_enemies_slooooooowww(self):
+        for i in self.enemies:
+            i.set_speed(
+                        max(1, i.get_speed_x() // 2),
+                        max(1, i.get_speed_y() // 2))
+
+    def make_enemies_fast(self):
+        for i in self.enemies:
+            i.set_speed(
+                        min(i.get_speed_x() * 2, 150),
+                        min(i.get_speed_y() * 2, 150))
+
+
 
     def handle_collision(self):
         global ENEMY_SPRITES
@@ -381,10 +428,63 @@ class Player:
         if pressed_keys[pg.K_RIGHT]: self.increase_x_pos(self.speed)
         if pressed_keys[pg.K_SPACE]: self.shoot()
 
+        # temporary for testing
+        if pressed_keys[pg.K_r]: self.remove_shield()
+        if pressed_keys[pg.K_a]: self.activate_shield()
+        if pressed_keys[pg.K_f]: self.make_enemies_fast()
+        if pressed_keys[pg.K_s]: self.make_enemies_slooooooowww()
+
+
         # bullets
+        shields_num = 1
+        info = {}
+
         for index, bullet in enumerate(self.visible_bullets):
-            if not bullet.move():
-                self.visible_bullets.pop(index)
+            if not isinstance(bullet, BulletCircular) or bullet.mode != "shield":
+                if not bullet.move():
+                    self.visible_bullets.pop(index)
+            else:
+                # print(len(self.visible_bullets))
+                if shields_num == 1:
+                    info[shields_num] = [self.rect.x + self.rect.width // 2 - 16,
+                                        self.rect.y - 32 - 32]
+                elif shields_num == 2:
+                    info[shields_num] = [self.rect.x + self.rect.width + 32,
+                                        self.rect.y + self.rect.height // 2 - 16]
+                elif shields_num == 3:
+                    info[shields_num] = [self.rect.x + self.rect.width // 2 - 16,
+                                        self.rect.y + self.rect.height + 32]
+                elif shields_num == 4:
+                    info[shields_num] = [self.rect.x - 32 - 32,
+                                        self.rect.y + self.rect.height // 2 - 16]
+                elif shields_num == 5:
+                    info[shields_num] = [
+                                        (info[1][0] + info[2][0] ) // 2,
+                                        (info[1][1] + info[2][1] ) // 2,
+                                        ]
+                elif shields_num == 6:
+                    info[shields_num] = [
+                                        (info[2][0] + info[3][0] ) // 2,
+                                        (info[2][1] + info[3][1] ) // 2,
+                                        ]
+                elif shields_num == 7:
+                    info[shields_num] = [
+                                        (info[3][0] + info[4][0] ) // 2,
+                                        (info[3][1] + info[4][1] ) // 2,
+                                        ]
+                elif shields_num == 8:
+                    info[shields_num] = [
+                                        (info[4][0] + info[1][0] ) // 2,
+                                        (info[4][1] + info[1][1] ) // 2,
+                                        ]
+                else:
+                    continue   # bug ?
+
+                bullet.set_position(*info[shields_num])
+
+                bullet.handle_enemies_collision()
+                bullet.draw()
+                shields_num += 1
 
         # health
         self.handle_collision()
@@ -428,7 +528,7 @@ def get_enemies_for_level(level, enemy_sprites):
     global screen
 
     # if level < 3:
-    enemies_num = 1 + level
+    enemies_num =  1 + level
 
     enemy_pics = [
                     'img/enemy_16.png',
@@ -465,11 +565,11 @@ def get_player_for_level(level, enemies, health=100, score=0):
                     health=health,
                     score=score,
                     bullet_speed=15 + (level // 5) * 5,
-                    shoot_interval=0.5,    # shoot mode will be primary, here we just test different things working
+                    shoot_interval=0.2,    # shoot mode will be primary, here we just test different things working
                     # shoot_mode= ['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
                     shoot_mode='primary',
                     level=level,   # very basic logic yet
-                    spaceship='primary',  #[ , 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
+                    spaceship=['primary', 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
                     )
     return player
 
