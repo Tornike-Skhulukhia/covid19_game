@@ -253,7 +253,7 @@ class Player:
                  score=0,
                  health=100,
                  level=1,
-
+                 remaining_shield_time=5,
                  spaceship='primary',
                  ):
         global WIDTH, HEIGHT
@@ -294,7 +294,8 @@ class Player:
         self.health = health
 
         self.created_time = time.time()
-        self.shield_activated_at = 0
+        # self.shield_activated_at = False
+        self.remaining_shield_time = remaining_shield_time
 
 
     def change_shoot_mode(self, new_mode):
@@ -302,14 +303,21 @@ class Player:
         # also available red, green ...
         self.shoot_mode = new_mode
 
+
     def draw_meta_infobar(self):
         global HEIGHT, WIDTH, INFOBAR_HEIGHT
 
         font = pg.font.Font(None, 36)
-        text = font.render(
-                        f'|   Score: {self.score}   |   Level: {self.current_level}   |   Life: {self.health}   |',
-                        1, 
-                        (255, 255, 255))
+
+        info_line_text = (
+                     f'|   Score: {self.score}   '
+                     f'|   Level: {self.current_level}   '
+                     f'|   Life: {self.health}   '
+                     f'|   Shield: {self.remaining_shield_time:.2f}   |'
+                    )
+
+        text = font.render(info_line_text, 1, (255, 255, 255))
+
         textpos = text.get_rect()
         textpos.centerx = WIDTH / 2
         textpos.centery = HEIGHT + 15
@@ -322,6 +330,8 @@ class Player:
         draw player and meta infobar
         '''
         self.screen.blit(self.img, self.rect)
+
+        # self.recalculate_remaining_shield_time()
         self.draw_meta_infobar()
 
 
@@ -365,12 +375,23 @@ class Player:
             self.last_shoot_time = time.time()
             self.used_bullets_num += 1
 
+    def decrease_shield_time_by(self, ms):
+        # if self.shield_activated_at is not False:    
+        # self.remaining_shield_time -= 
+        if self.shoot_mode == 'shield':
+            self.remaining_shield_time -= ms / 1000
+
+        if self.remaining_shield_time <= 0:
+            self.remaining_shield_time = 0
+            self.remove_shield()
+
 
     def activate_shield(self):
-        if time.time() - self.shield_activated_at < 10: return # use 10 secs
+        # if time.time() - self.shield_activated_at < 10: return # use 10 secs
+        if self.remaining_shield_time <= 0: return
 
         self.change_shoot_mode("shield")
-        self.shield_activated_at = time.time()
+        # self.shield_activated_at = time.time()
 
         for i in range(8):
             shield_bullet = BulletCircular(
@@ -390,7 +411,7 @@ class Player:
 
         self.change_shoot_mode('primary')
         self.last_shoot_time = time.time() - 999
-        self.shield_activated_at = 0
+        # self.shield_activated_at = 0
 
 
     def make_enemies_slooooooowww(self):
@@ -497,6 +518,7 @@ WIDTH = 984
 HEIGHT = 576
 INFOBAR_HEIGHT = 50
 FPS = 30
+ONE_FRAME_DURATION = 1000 // FPS
 
 SCREEN_SIZE = (WIDTH, HEIGHT + INFOBAR_HEIGHT)
 BG_COLOR = (20, 20, 20)
@@ -528,7 +550,7 @@ def get_enemies_for_level(level, enemy_sprites):
     global screen
 
     # if level < 3:
-    enemies_num =  1 + level
+    enemies_num =  1 # 1 + level
 
     enemy_pics = [
                     'img/enemy_16.png',
@@ -543,7 +565,7 @@ def get_enemies_for_level(level, enemy_sprites):
                     screen=screen,
                     x=random.choice(range(WIDTH)),
                     y=random.choice(range(HEIGHT - 200)),
-                    speed_x=random.randint(1, 3 + level),
+                    speed_x=0, #random.randint(1, 3 + level),
                     speed_y=random.randint(1, 3 + level),
                     # img=enemy_pics[i],
                     img=img,
@@ -584,9 +606,11 @@ player = get_player_for_level(1, enemies=enemies)
 ENEMY_SPRITES.add(enemies)
 
 run = 1
+
+
 while run:
     #############################################
-    pg.time.wait(1000 // FPS)
+    pg.time.wait(ONE_FRAME_DURATION)
     # time.sleep(1000 // FPS / 1000)
 
     # EXIT
@@ -605,6 +629,7 @@ while run:
 
     # PLAYER
     player.move_me_and_my_bullets(pressed_keys=pg.key.get_pressed())
+    player.decrease_shield_time_by(ONE_FRAME_DURATION)  # if necessary
     if player.health <= 0:
         print('Game Over, try again...')
         run = False
