@@ -174,7 +174,6 @@ class BulletCircular(Bullet):
     def __init__(self, mode, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # breakpoint()
         self.mode = mode
         self.img = pg.image.load({
                                     'red': 'img/circular_bullet_red_48.png',
@@ -184,7 +183,6 @@ class BulletCircular(Bullet):
                                     'aliens_live': 'img/alien_live_48.png',
                                     'toilet_paper': 'img/toilet_paper_48.png',
                                     'shield': 'img/facemask_emoji_32.png',
-                                    # 'blue': 'img/circular_bullet_red_48.png',
                                 }[self.mode])
         self.mask = pg.mask.from_surface(self.img)
         self.rect = self.img.get_rect()
@@ -192,10 +190,10 @@ class BulletCircular(Bullet):
         self.rect.y = kwargs['y']
         self.speed_x = {
                         'red': random.randint(-20, 20),
-                        'green': random.randint(-35, 35),
+                        'green': random.choice([-1, 1]) * random.randint(1, 50),
                         'aliens': random.randint(-25, 25),
-                        'aliens_red': random.randint(-25, 25),
-                        'aliens_live': random.randint(-25, 25),
+                        'aliens_red': random.randint(-35, 35),
+                        'aliens_live': random.randint(-30, 30),
                         'toilet_paper': random.randint(-15, 15),
                         'shield': 0,
                         }[self.mode]
@@ -210,15 +208,10 @@ class BulletCircular(Bullet):
                         }[self.mode]
 
     def move(self):
-        '''
-        Solve bug/s here later!!!
-        '''
         global WIDTH, HEIGHT
-        # breakpoint()
         new_x = self.rect.x + self.speed_x
         new_y = self.rect.y + self.speed_y
 
-        # breakpoint()
         # screen borders
         if not 0 <= new_x <= (WIDTH - self.rect.width):
             new_x = min(new_x, WIDTH - self.rect.width)
@@ -285,7 +278,6 @@ class Player:
         self.shoot_mode = shoot_mode
         self.last_shoot_time = 0
         self.visible_bullets = []
-        self.used_bullets_num = 0
 
         self.enemies = enemies
 
@@ -294,8 +286,9 @@ class Player:
         self.health = health
 
         self.creation_time = time.time()
-        # self.shield_activated_at = False
         self.remaining_shield_time = remaining_shield_time
+        self.gift = False
+        self.gift_freq_sec = 7
 
 
     def change_shoot_mode(self, new_mode):
@@ -340,8 +333,34 @@ class Player:
         return img_file
 
 
+    def get_gift_img(self):
+        return {
+            'slow_down': 'img/sloth_64.png',  # enemy
+            'speed_up': 'img/lightning_mcqueen_76.png',    # player
+            'red': 'img/transformers_logo_48.png',
+            'green': 'img/hulk_42.png',
+            'toilet_paper': 'img/towel_blue_76.png', 
+            'aliens_live': 'img/galaxy_76.png',
+            'aliens': 'img/galaxy_blue_64.png',
+            'aliens_red': 'img/spaceship_silver_76.png',
+        }.get(self.gift, 'img/gift_icon_48.png')
+
+
+    def apply_gift(self, gift):
+        if gift == 'slow_down':
+            self.make_enemies_slooooooowww()
+        elif gift == 'speed_up':
+            self.make_enemies_fast()
+        else:
+            self.change_shoot_mode(gift)
+
+        self.gift = gift
+
+
+
     def draw_meta_infobar(self):
         global HEIGHT, WIDTH, INFOBAR_HEIGHT
+
 
         font = pg.font.Font(None, 36)
 
@@ -350,7 +369,7 @@ class Player:
                      f'|   Level: {self.current_level}   |'
                     )
 
-        text = font.render(info_line_text, 1, (255, 255, 255))
+        life_level_text = font.render(info_line_text, 1, (255, 255, 255))
         life_text = font.render(
                                 f'|        : {self.health:^3}   |',
                                 1,
@@ -360,33 +379,53 @@ class Player:
                             1,
                             self.get_shield_text_color())
 
-        textpos = text.get_rect()
-        textpos.centerx = WIDTH / 2 - 120
-        textpos.centery = HEIGHT + 15
+        info_text_pos = life_level_text.get_rect()
+        info_text_pos.centerx = WIDTH / 2 - 120
+        info_text_pos.centery = HEIGHT + 15
+
+        # gift image on left
+        gift_img = pg.image.load(self.get_gift_img())
+        gift_img_pos = gift_img.get_rect()
+        gift_img_pos.left = 80
+        gift_img_pos.centery = info_text_pos.centery
+
+        gift_img_bottom_line = font.render('__________',
+                                            1,
+                                            {
+                                                'speed_up': (230, 0, 0),
+                                                False: (100, 100, 100)
+                                            }.get(self.gift, (0, 230, 0)))
+
+        gift_img_bottom_line_rect = gift_img_bottom_line.get_rect()
+        gift_img_bottom_line_rect.left = 40
+        gift_img_bottom_line_rect.centery = info_text_pos.centery + 18
+
+
 
         # life
         life_text_rect = life_text.get_rect()
-        life_text_rect.right = textpos.right + 185
-        life_text_rect.centery = textpos.centery
+        life_text_rect.right = info_text_pos.right + 185
+        life_text_rect.centery = info_text_pos.centery
 
         life_img = pg.image.load(self.get_health_image())
         # life_img = pg.image.load('img/heart_32.png')
         life_img_rect = life_img.get_rect()
-        life_img_rect.left = textpos.right + 60
-        life_img_rect.centery = textpos.centery
+        life_img_rect.left = info_text_pos.right + 60
+        life_img_rect.centery = info_text_pos.centery
 
         # shield
         shield_text_rect = shield_text.get_rect()
-        shield_text_rect.right = textpos.right + 400
-        shield_text_rect.centery = textpos.centery
+        shield_text_rect.right = info_text_pos.right + 400
+        shield_text_rect.centery = info_text_pos.centery
 
         mask_img = pg.image.load(self.get_shield_image())
         mask_rect = mask_img.get_rect()
-        mask_rect.left = textpos.right + 240
-        mask_rect.centery = textpos.centery
+        mask_rect.left = info_text_pos.right + 240
+        mask_rect.centery = info_text_pos.centery
 
-        # textpos.centerx = self.screen.get_rect().centerx
-        self.screen.blit(text, textpos)
+        self.screen.blit(gift_img, gift_img_pos)
+        self.screen.blit(gift_img_bottom_line, gift_img_bottom_line_rect)
+        self.screen.blit(life_level_text, info_text_pos)
         self.screen.blit(life_img, life_img_rect)
         self.screen.blit(life_text, life_text_rect)
         self.screen.blit(mask_img, mask_rect)
@@ -423,7 +462,6 @@ class Player:
 
     def shoot(self):
         if self.bullet_is_ready():
-            # breakpoint()
             if self.shoot_mode != 'primary':
                 new_bullet = BulletCircular(
                                     mode=self.shoot_mode,  # red, green...
@@ -439,13 +477,10 @@ class Player:
                                     player=self,
                                     enemies=self.enemies)
             self.visible_bullets.append(new_bullet)
-            # print('Fire!')
+            # print('Fire!')  :)
             self.last_shoot_time = time.time()
-            self.used_bullets_num += 1
 
     def decrease_shield_time_by(self, ms):
-        # if self.shield_activated_at is not False:    
-        # self.remaining_shield_time -= 
         if self.shoot_mode == 'shield':
             self.remaining_shield_time -= ms / 1000
 
@@ -455,11 +490,10 @@ class Player:
 
 
     def activate_shield(self):
-        # if time.time() - self.shield_activated_at < 10: return # use 10 secs
         if self.remaining_shield_time <= 0: return
 
         self.change_shoot_mode("shield")
-        # self.shield_activated_at = time.time()
+        self.reset_gift()
 
         for i in range(8):
             shield_bullet = BulletCircular(
@@ -481,11 +515,14 @@ class Player:
         self.last_shoot_time = time.time()
 
 
+    def reset_gift(self):
+        self.gift = False
+
     def make_enemies_slooooooowww(self):
         for i in self.enemies:
             i.set_speed(
-                        max(1, i.get_speed_x() // 2),
-                        max(1, i.get_speed_y() // 2))
+                        max(1, i.get_speed_x() // 5),
+                        max(1, i.get_speed_y() // 5))
 
     def make_enemies_fast(self):
         for i in self.enemies:
@@ -519,8 +556,8 @@ class Player:
         # temporary for testing
         if pressed_keys[pg.K_r]: self.remove_shield()
         if pressed_keys[pg.K_a]: self.activate_shield()
-        if pressed_keys[pg.K_f]: self.make_enemies_fast()
-        if pressed_keys[pg.K_s]: self.make_enemies_slooooooowww()
+        # if pressed_keys[pg.K_f]: self.make_enemies_fast()
+        # if pressed_keys[pg.K_s]: self.make_enemies_slooooooowww()
 
 
         # bullets
@@ -532,7 +569,6 @@ class Player:
                 if not bullet.move():
                     self.visible_bullets.pop(index)
             else:
-                # print(len(self.visible_bullets))
                 if shields_num == 1:
                     info[shields_num] = [self.rect.x + self.rect.width // 2 - 16,
                                         self.rect.y - 32 - 32]
@@ -617,7 +653,7 @@ def get_enemies_for_level(level, enemy_sprites):
     global screen
 
     # if level < 3:
-    enemies_num =  min(200, 1 + (level if level < 10 else level * 3))
+    enemies_num =  min(200, 1 + (level if level < 10 else int(level * 1.5)))
 
     enemy_pics = [
                     'img/enemy_16.png',
@@ -632,8 +668,8 @@ def get_enemies_for_level(level, enemy_sprites):
                     screen=screen,
                     x=random.choice(range(WIDTH)),
                     y=random.choice(range(HEIGHT - 200)),
-                    speed_x=random.randint(3, 5 + (level * 2 if level < 15 else level * 3)),
-                    speed_y=random.randint(3, 5 + (level * 2 if level < 15 else level * 3)),
+                    speed_x=min(150, random.randint(3, 5 + (level * 2 if level < 15 else level * 3))),
+                    speed_y=min(150, random.randint(3, 5 + (level * 2 if level < 15 else level * 3))),
                     # img=enemy_pics[i],
                     img=img,
                     groups=enemy_sprites,
@@ -656,6 +692,33 @@ def get_spaceship_for(level):
     return spaceship
 
 
+def get_gift_for(level, gift_freq_sec):
+    gift = 0
+
+    if random.randint(1, FPS * gift_freq_sec) == 1:
+        modes = ['speed_up']
+
+        if level > 2:
+            modes.append('slow_down')
+        if level > 7:
+            modes.append('aliens')
+        if level > 12:
+            modes.append('red')
+        if level > 17:
+            modes.append('aliens_live')
+        if level > 22:
+            modes.append('aliens_red')
+        if level > 27:
+            modes.append('green')
+        if level > 32:
+            modes.append('toilet_paper')
+
+        gift = random.choice(modes)
+
+    return gift
+
+
+
 def get_player_for_level(level, enemies, health=100, score=0, remaining_shield_time=0, round_length=999):
     global screen
 
@@ -665,11 +728,10 @@ def get_player_for_level(level, enemies, health=100, score=0, remaining_shield_t
     player = Player(screen=screen,
                     enemies=enemies,
                     speed=5 + (level // 5) * 2,
-                    health=min(100, health + (level // 5) * 3),
+                    health=min(100, health + (level // 5) * 4),
                     score=score + int(remaining_shield_time*10) + (max(0, 30 - round_length) * level),
                     bullet_speed=10 + (level // 5) * 5,
-                    shoot_interval=max(0.01, 0.5 - (level // 5) * 0.05), # shoot mode will be primary, here we just test different things working
-                    # shoot_mode=['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
+                    shoot_interval=max(0.01, 0.5 - (level // 5) * 0.05),
                     shoot_mode='primary',
                     level=level,   # very basic logic yet
                     spaceship=get_spaceship_for(level),
@@ -692,7 +754,6 @@ run = 1
 while run:
     #############################################
     pg.time.wait(ONE_FRAME_DURATION)
-    # time.sleep(1000 // FPS / 1000)
 
     # EXIT
     for event in pg.event.get():
@@ -701,6 +762,13 @@ while run:
     # UPDATE
     screen.fill(BG_COLOR)
     #############################################
+
+    # GIFT
+    if (not player.gift) and (player.shoot_mode != 'shield'):
+        gift = get_gift_for(player.current_level, player.gift_freq_sec)
+        if gift:
+            player.apply_gift(gift)
+
 
     # ENEMIES
     for index, enemy in enumerate(enemies):
@@ -715,6 +783,7 @@ while run:
         print('Game Over, try again...')
         run = False
 
+    # NEXT ROUND
     if not player.enemies:
         # update info and start new round
         print(f'Round {player.current_level} Completed, Cool!...')
@@ -727,13 +796,8 @@ while run:
                                       score=player.score,
                                       remaining_shield_time=player.remaining_shield_time,
                                       round_length=int(time.time() - player.creation_time))
-
         ENEMY_SPRITES.add(enemies)
 
-        # run = False
-        # time.sleep(10)
-
-    #############################################
     # SCREEN
     pg.display.update()
 
