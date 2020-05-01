@@ -304,25 +304,93 @@ class Player:
         self.shoot_mode = new_mode
 
 
+    def get_shield_text_color(self):
+        if self.remaining_shield_time >= 3:
+            color = (0, 255, 0)
+        else:
+            color = (255, 0, 0)
+        return color
+
+    def get_life_text_color(self):
+        if self.health > 50:
+            color = (0, 255, 0)
+        elif self.health > 30:
+            color = (200, 2, 78)
+        else:
+            color = (255, 0, 0)
+        return color
+
+    def get_health_image(self):
+        if self.health > 70:
+            img_file = 'img/colorful_tree_40.png'
+        elif self.health > 30:
+            img_file = 'img/heart_tree_32.png'
+        else:
+            img_file = 'img/heart_32.png'
+        return img_file
+
+    def get_shield_image(self):
+        if self.remaining_shield_time >= 4:
+            img_file = 'img/facemask_red_48.png'
+        elif self.remaining_shield_time >= 2:
+            img_file = 'img/facemask_black_40.png'
+        else:
+            img_file = 'img/facemask_surgical_48.png'
+
+        return img_file
+
+
     def draw_meta_infobar(self):
         global HEIGHT, WIDTH, INFOBAR_HEIGHT
 
         font = pg.font.Font(None, 36)
 
         info_line_text = (
-                     f'|   Score: {self.score}   '
-                     f'|   Level: {self.current_level}   '
-                     f'|   Life: {self.health}   '
-                     f'|   Shield: {self.remaining_shield_time:.2f}   |'
+                     f'|   Score: {self.score}  |      '
+                     f'|   Level: {self.current_level}   |'
                     )
 
         text = font.render(info_line_text, 1, (255, 255, 255))
+        life_text = font.render(
+                                f'|        : {self.health:^3}   |',
+                                1,
+                                self.get_life_text_color())
+        shield_text = font.render(
+                            f'|           : {self.remaining_shield_time:.2f}   |',
+                            1,
+                            self.get_shield_text_color())
 
         textpos = text.get_rect()
-        textpos.centerx = WIDTH / 2
+        textpos.centerx = WIDTH / 2 - 120
         textpos.centery = HEIGHT + 15
+
+        # life
+        life_text_rect = life_text.get_rect()
+        life_text_rect.right = textpos.right + 185
+        life_text_rect.centery = textpos.centery
+
+        life_img = pg.image.load(self.get_health_image())
+        # life_img = pg.image.load('img/heart_32.png')
+        life_img_rect = life_img.get_rect()
+        life_img_rect.left = textpos.right + 60
+        life_img_rect.centery = textpos.centery
+
+        # shield
+        shield_text_rect = shield_text.get_rect()
+        shield_text_rect.right = textpos.right + 400
+        shield_text_rect.centery = textpos.centery
+
+        mask_img = pg.image.load(self.get_shield_image())
+        mask_rect = mask_img.get_rect()
+        mask_rect.left = textpos.right + 240
+        mask_rect.centery = textpos.centery
+
         # textpos.centerx = self.screen.get_rect().centerx
         self.screen.blit(text, textpos)
+        self.screen.blit(life_img, life_img_rect)
+        self.screen.blit(life_text, life_text_rect)
+        self.screen.blit(mask_img, mask_rect)
+        self.screen.blit(shield_text, shield_text_rect)
 
 
     def draw(self):
@@ -381,9 +449,9 @@ class Player:
         if self.shoot_mode == 'shield':
             self.remaining_shield_time -= ms / 1000
 
-        if self.remaining_shield_time <= 0:
-            self.remaining_shield_time = 0
-            self.remove_shield()
+            if self.remaining_shield_time <= 0:
+                self.remaining_shield_time = 0
+                self.remove_shield()
 
 
     def activate_shield(self):
@@ -410,8 +478,7 @@ class Player:
             self.visible_bullets.remove(i)
 
         self.change_shoot_mode('primary')
-        self.last_shoot_time = time.time() - 999
-        # self.shield_activated_at = 0
+        self.last_shoot_time = time.time()
 
 
     def make_enemies_slooooooowww(self):
@@ -550,7 +617,7 @@ def get_enemies_for_level(level, enemy_sprites):
     global screen
 
     # if level < 3:
-    enemies_num =  1 # 1 + level
+    enemies_num =  1 + level
 
     enemy_pics = [
                     'img/enemy_16.png',
@@ -587,8 +654,8 @@ def get_player_for_level(level, enemies, health=100, score=0):
                     health=health,
                     score=score,
                     bullet_speed=15 + (level // 5) * 5,
-                    shoot_interval=0.2,    # shoot mode will be primary, here we just test different things working
-                    # shoot_mode= ['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
+                    shoot_interval=0.1,    # shoot mode will be primary, here we just test different things working
+                    # shoot_mode=['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
                     shoot_mode='primary',
                     level=level,   # very basic logic yet
                     spaceship=['primary', 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
