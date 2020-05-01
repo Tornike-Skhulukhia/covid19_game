@@ -253,7 +253,7 @@ class Player:
                  score=0,
                  health=100,
                  level=1,
-                 remaining_shield_time=5,
+                 remaining_shield_time=3,
                  spaceship='primary',
                  ):
         global WIDTH, HEIGHT
@@ -293,7 +293,7 @@ class Player:
         self.current_level = level
         self.health = health
 
-        self.created_time = time.time()
+        self.creation_time = time.time()
         # self.shield_activated_at = False
         self.remaining_shield_time = remaining_shield_time
 
@@ -330,9 +330,9 @@ class Player:
         return img_file
 
     def get_shield_image(self):
-        if self.remaining_shield_time >= 4:
+        if self.remaining_shield_time >= 2:
             img_file = 'img/facemask_red_48.png'
-        elif self.remaining_shield_time >= 2:
+        elif self.remaining_shield_time >= 1:
             img_file = 'img/facemask_black_40.png'
         else:
             img_file = 'img/facemask_surgical_48.png'
@@ -617,7 +617,7 @@ def get_enemies_for_level(level, enemy_sprites):
     global screen
 
     # if level < 3:
-    enemies_num =  1 + level
+    enemies_num =  min(200, 1 + (level if level < 10 else level * 3))
 
     enemy_pics = [
                     'img/enemy_16.png',
@@ -632,8 +632,8 @@ def get_enemies_for_level(level, enemy_sprites):
                     screen=screen,
                     x=random.choice(range(WIDTH)),
                     y=random.choice(range(HEIGHT - 200)),
-                    speed_x=random.randint(1, 2 + level),
-                    speed_y=random.randint(1, 2 + level),
+                    speed_x=random.randint(3, 5 + (level * 2 if level < 15 else level * 3)),
+                    speed_y=random.randint(3, 5 + (level * 2 if level < 15 else level * 3)),
                     # img=enemy_pics[i],
                     img=img,
                     groups=enemy_sprites,
@@ -649,14 +649,14 @@ def get_spaceship_for(level):
         spaceship = 'ferrari'
     elif level <= 15:
         spaceship = 'shuttle'
-    elif level <= 25:
+    elif level <= 25 or level % 25 == 0:
         spaceship = 'tesla'
     else:
         spaceship = 'scifi_blue'
     return spaceship
 
 
-def get_player_for_level(level, enemies, health=100, score=0):
+def get_player_for_level(level, enemies, health=100, score=0, remaining_shield_time=0, round_length=999):
     global screen
 
     # here we may add health & scores for specific round completions
@@ -665,9 +665,9 @@ def get_player_for_level(level, enemies, health=100, score=0):
     player = Player(screen=screen,
                     enemies=enemies,
                     speed=5 + (level // 5) * 2,
-                    health=min(100, health + (level // 5) * 5),
-                    score=score,
-                    bullet_speed=15 + (level // 5) * 5,
+                    health=min(100, health + (level // 5) * 3),
+                    score=score + int(remaining_shield_time*10) + (max(0, 30 - round_length) * level),
+                    bullet_speed=10 + (level // 5) * 5,
                     shoot_interval=max(0.01, 0.5 - (level // 5) * 0.05), # shoot mode will be primary, here we just test different things working
                     # shoot_mode=['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
                     shoot_mode='primary',
@@ -724,7 +724,9 @@ while run:
         player = get_player_for_level(level=player.current_level + 1,
                                       enemies=enemies,
                                       health=player.health,
-                                      score=player.score)
+                                      score=player.score,
+                                      remaining_shield_time=player.remaining_shield_time,
+                                      round_length=int(time.time() - player.creation_time))
 
         ENEMY_SPRITES.add(enemies)
 
