@@ -632,14 +632,28 @@ def get_enemies_for_level(level, enemy_sprites):
                     screen=screen,
                     x=random.choice(range(WIDTH)),
                     y=random.choice(range(HEIGHT - 200)),
-                    speed_x=0, #random.randint(1, 3 + level),
-                    speed_y=random.randint(1, 3 + level),
+                    speed_x=random.randint(1, 2 + level),
+                    speed_y=random.randint(1, 2 + level),
                     # img=enemy_pics[i],
                     img=img,
                     groups=enemy_sprites,
                     )
                 for i, img in zip(range(enemies_num), random.sample(enemy_pics, enemies_num))]
     return enemies
+
+
+def get_spaceship_for(level):
+    if level <= 5 or level % 11 == 0:
+        spaceship = "primary"
+    elif level <= 10:
+        spaceship = 'ferrari'
+    elif level <= 15:
+        spaceship = 'shuttle'
+    elif level <= 25:
+        spaceship = 'tesla'
+    else:
+        spaceship = 'scifi_blue'
+    return spaceship
 
 
 def get_player_for_level(level, enemies, health=100, score=0):
@@ -650,15 +664,15 @@ def get_player_for_level(level, enemies, health=100, score=0):
     # if level  3:
     player = Player(screen=screen,
                     enemies=enemies,
-                    speed=8 + (level // 5) * 2,
-                    health=health,
+                    speed=5 + (level // 5) * 2,
+                    health=min(100, health + (level // 5) * 5),
                     score=score,
                     bullet_speed=15 + (level // 5) * 5,
-                    shoot_interval=0.1,    # shoot mode will be primary, here we just test different things working
+                    shoot_interval=max(0.01, 0.5 - (level // 5) * 0.05), # shoot mode will be primary, here we just test different things working
                     # shoot_mode=['primary', 'red', 'green', 'aliens', 'aliens_red', 'aliens_live', 'toilet_paper'][(level - 1) % 7],
                     shoot_mode='primary',
                     level=level,   # very basic logic yet
-                    spaceship=['primary', 'shuttle', 'scifi_blue', 'ferrari', 'tesla'][(level - 1) % 5],
+                    spaceship=get_spaceship_for(level),
                     )
     return player
 
