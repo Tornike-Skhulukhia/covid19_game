@@ -5,6 +5,7 @@ import time
 import numpy as np
 import re
 import math
+from btn_temp import Button
 ######################################
 
 class Enemy(pg.sprite.Sprite):
@@ -707,23 +708,13 @@ def get_player_for_level(level, enemies, health=100, score=0, remaining_shield_t
 
 
 
-
-
-
-
-
-################################################
-################################################
-from btn_temp import Button
-
-
-
-def handle_welcome_screen(exit_info):
+def handle_welcome_screen(welcome_screen_info, score_save_resp):
     '''
     tells which button was pressed,
         start game, exit, or save score.
     '''
     global ONE_FRAME_DURATION, screen, BG_COLOR, WIDTH, HEIGHT
+    last_score = welcome_screen_info['score']
 
     start_btn = Button(screen=screen,      color=BG_COLOR,           x=WIDTH // 2 - 175, 
                        y=HEIGHT//2-170,    width=380,                height=50,
@@ -732,36 +723,38 @@ def handle_welcome_screen(exit_info):
     exit_btn = Button(screen=screen,       color=BG_COLOR,           x=WIDTH // 2 - 50, 
                       y=HEIGHT//2,         width=140,                height=50,
                       text='Exit',         text_color=(255, 0, 0),   text_size=100)
-    # # draw last score button with saving option
-    # save_btn = Button(screen=screen,             color=BG_COLOR,     x=WIDTH // 2 - 100, 
-    #                   y=HEIGHT//2 + 200,         width=235,          height=50,
-    #                   text=f'Save Score ({LAST_SCORE[-1]})',             text_color=(250, 0, 250),   text_size=50)
 
-    # # save response 
-    # save_resp_btn = Button(screen=screen,             color=BG_COLOR,              x=WIDTH // 2 - 190,
-    #                        y=HEIGHT//2 + 300,         width=0,                     height=0,
-    #                        text=SAVE_RESPONSE[-1],    text_color=(255, 255, 55),   text_size=35)
+    # draw last score button with saving option
+    save_btn = Button(screen=screen,             color=BG_COLOR,     x=WIDTH // 2 - 100, 
+                      y=HEIGHT//2 + 200,         width=235,          height=50,
+                      text=f'Save Score ({last_score})',
+                      text_color=(250, 0, 250),   text_size=50)
+
+    # save response 
+    save_resp_btn = Button(screen=screen,             color=BG_COLOR,              x=WIDTH // 2 - 190,
+                           y=HEIGHT//2 + 300,         width=0,                     height=0,
+                           text=score_save_resp,    text_color=(255, 255, 55),   text_size=35)
 
     while 1:
         pg.time.wait(ONE_FRAME_DURATION); pg.event.get()
         screen.fill(BG_COLOR)
 
+        keys = pg.key.get_pressed()
         mouse_pos = pg.mouse.get_pos()
         left_click = pg.mouse.get_pressed()[0]
 
         start_btn.draw()
         exit_btn.draw()
-        # save_btn.draw()
+        if last_score > 0: save_btn.draw()
+        if score_save_resp: save_resp_btn.draw()
         pg.display.update()
 
-        if start_btn.is_clicked(mouse_pos, left_click):
+        if start_btn.is_clicked(mouse_pos, left_click) or keys[pg.K_SPACE]:
             return 'start game'
         elif exit_btn.is_clicked(mouse_pos, left_click):
             return 'exit'
-
-    # elif save_btn.is_clicked(mouse_pos, left_click):
-        # res = 'save'
-
+        elif save_btn.is_clicked(mouse_pos, left_click):
+            return 'save'
 
 
 def save_data_in_external_db(data):
@@ -781,41 +774,35 @@ def save_data_in_external_db(data):
         return False
 
 
-def handle_saving(level):
+def handle_score_saving(welcome_screen_info):
 
     # get input
+    global BG_COLOR
     from pygame_text_input import TextInput
-    global SAVE_RESPONSE
-    global LAST_SCORE
-    
 
     text_input = TextInput(initial_string='What is your name? :) (press Enter to save)',
                            text_color=(255, 255, 255),
                            cursor_color=(0, 255, 0))
-    run = 1
-    while run:
-        screen.fill(BG_COLOR)
-        events = pg.event.get()
+
+    while True:
+        pg.time.wait(ONE_FRAME_DURATION)
+        screen.fill(BG_COLOR); events = pg.event.get()
+
         for event in events:
             if event.type == pg.QUIT:
-                return
+                return ''
 
         enter_clicked = text_input.update(events)
         if enter_clicked:
-            if save_data_in_external_db({'score': LAST_SCORE[-1],
-                                         'level': level,
-                                         'player_name': text_input.get_text().strip()}):
-                resp = 'Your Score Saved Successfully!'.center(len('There was an error, Please Try Later'))
-                LAST_SCORE.append(0)
+            if save_data_in_external_db({'score': welcome_screen_info['score'],
+                                         'level': welcome_screen_info['level'],
+                                         'player': text_input.get_text().strip()}):
+                return 'Your Score Saved Successfully!'.center(len('There was an error, Please Try Later'))
             else:
-                resp = 'There was an error, Please Try Later'
-            SAVE_RESPONSE.append(resp)
-            return
+                return 'There was an error, Please Try Later'
 
         screen.blit(text_input.get_surface(), (10, 10))
         pg.display.update()
-        
-        pg.time.wait(ONE_FRAME_DURATION)
 
 
 def prepare_game_screen():
@@ -929,20 +916,28 @@ def play_game():
 if __name__ == '__main__':
     prepare_game_screen()
 
-    exit_info = {'score':0, 'level':0}
+    welcome_screen_info = {'score':0, 'level':0}
+    score_save_resp = ''
 
     while True:
         # GAME ICON WAS CLICKED
-        welcome_screen_answer = handle_welcome_screen(exit_info)
+        welcome_screen_answer = handle_welcome_screen(welcome_screen_info, score_save_resp)
 
         # RESTART GAME
         if welcome_screen_answer == 'start game':
-            pass
+            # returns only if health <= 0 or player pressed X button
+            welcome_screen_info = play_game()
+            score_save_resp = ''
+
         # EXIT
         elif welcome_screen_answer == 'exit':
             break
+        # SAVE SCORE
+        elif welcome_screen_answer == 'save':
+            # return True or False, depending on saving status
+            # print('saving')
+            score_save_resp = handle_score_saving(welcome_screen_info)
 
-        # returns only if health <= 0 or player pressed X button
-        exit_info = play_game()
-
+            if score_save_resp.strip() == 'Your Score Saved Successfully!':
+                welcome_screen_info['score'] = 0
     pg.quit()

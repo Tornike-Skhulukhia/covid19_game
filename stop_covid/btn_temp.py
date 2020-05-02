@@ -38,6 +38,7 @@ class Button:
         self.text = text
         self.text_color = text_color or (255, 0, 0)
         self.text_size = text_size
+        self.drawn = False
 
     def draw(self):
         pg.draw.rect(
@@ -53,8 +54,12 @@ class Button:
             text_rect.top = self.y
 
             self.screen.blit(text, text_rect)
+        self.drawn = True
+
 
     def is_hovered(self, mouse_pos):
+        if not self.drawn: return False
+
         res = all([
                     self.x <= mouse_pos[0] <= self.x + self.width,
                     self.y <= mouse_pos[1] <= self.y + self.height
