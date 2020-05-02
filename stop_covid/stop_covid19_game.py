@@ -705,14 +705,25 @@ def get_player_for_level(level, enemies, health=100, score=0, remaining_shield_t
     return player
 
 
-def handle_start_screen():
-    mouse_pos = pg.mouse.get_pos()
-    left_click = pg.mouse.get_pressed()[0]
-    events = pg.event.get()
 
-    from btn_temp import Button
-    global SAVE_RESPONSE, LAST_SCORE
 
+
+
+
+
+
+################################################
+################################################
+from btn_temp import Button
+
+
+
+def handle_welcome_screen(exit_info):
+    '''
+    tells which button was pressed,
+        start game, exit, or save score.
+    '''
+    global ONE_FRAME_DURATION, screen, BG_COLOR, WIDTH, HEIGHT
 
     start_btn = Button(screen=screen,      color=BG_COLOR,           x=WIDTH // 2 - 175, 
                        y=HEIGHT//2-170,    width=380,                height=50,
@@ -721,32 +732,36 @@ def handle_start_screen():
     exit_btn = Button(screen=screen,       color=BG_COLOR,           x=WIDTH // 2 - 50, 
                       y=HEIGHT//2,         width=140,                height=50,
                       text='Exit',         text_color=(255, 0, 0),   text_size=100)
+    # # draw last score button with saving option
+    # save_btn = Button(screen=screen,             color=BG_COLOR,     x=WIDTH // 2 - 100, 
+    #                   y=HEIGHT//2 + 200,         width=235,          height=50,
+    #                   text=f'Save Score ({LAST_SCORE[-1]})',             text_color=(250, 0, 250),   text_size=50)
 
+    # # save response 
+    # save_resp_btn = Button(screen=screen,             color=BG_COLOR,              x=WIDTH // 2 - 190,
+    #                        y=HEIGHT//2 + 300,         width=0,                     height=0,
+    #                        text=SAVE_RESPONSE[-1],    text_color=(255, 255, 55),   text_size=35)
 
-    # draw last score button with saving option
-    save_btn = Button(screen=screen,             color=BG_COLOR,     x=WIDTH // 2 - 100, 
-                      y=HEIGHT//2 + 200,         width=235,          height=50,
-                      text=f'Save Score ({LAST_SCORE[-1]})',             text_color=(250, 0, 250),   text_size=50)
+    while 1:
+        pg.time.wait(ONE_FRAME_DURATION); pg.event.get()
+        screen.fill(BG_COLOR)
 
-    # save response 
-    # if len(SAVE_RESPONSE) > 1:
-    #     breakpoint()
-    save_resp_btn = Button(screen=screen,             color=BG_COLOR,              x=WIDTH // 2 - 190,
-                           y=HEIGHT//2 + 300,         width=0,                     height=0,
-                           text=SAVE_RESPONSE[-1],    text_color=(255, 255, 55),   text_size=35)
+        mouse_pos = pg.mouse.get_pos()
+        left_click = pg.mouse.get_pressed()[0]
 
-    start_btn.draw(); exit_btn.draw(); save_btn.draw(); save_resp_btn.draw(); pg.display.update()
+        start_btn.draw()
+        exit_btn.draw()
+        # save_btn.draw()
+        pg.display.update()
 
-    if start_btn.is_clicked(mouse_pos, left_click):
-        res = 'start'
-    elif exit_btn.is_clicked(mouse_pos, left_click):
-        res = 'exit'
-    elif save_btn.is_clicked(mouse_pos, left_click):
-        res = 'save'
-    else:
-        res = None
+        if start_btn.is_clicked(mouse_pos, left_click):
+            return 'start game'
+        elif exit_btn.is_clicked(mouse_pos, left_click):
+            return 'exit'
 
-    return res
+    # elif save_btn.is_clicked(mouse_pos, left_click):
+        # res = 'save'
+
 
 
 def save_data_in_external_db(data):
@@ -803,9 +818,12 @@ def handle_saving(level):
         pg.time.wait(ONE_FRAME_DURATION)
 
 
-def let_the_game_begin():
+def prepare_game_screen():
+    '''
+    prepare things for later parts
+    '''
     # LET THE GAME BEGIN
-    global ENEMY_SPRITES, screen, WIDTH, HEIGHT, \
+    global screen, WIDTH, HEIGHT, \
            INFOBAR_HEIGHT, FPS, ONE_FRAME_DURATION,\
            SCREEN_SIZE, BG_COLOR
 
@@ -820,14 +838,9 @@ def let_the_game_begin():
 
     SHOW_START_SCREEN = True
 
-    global LAST_SCORE, SAVE_RESPONSE
-    LAST_SCORE = [0]
-    SAVE_RESPONSE = ['']
-
     # initialize
     pg.display.init()
     pg.font.init()
-
 
     screen = pg.display.set_mode(SCREEN_SIZE)
     screen.fill(BG_COLOR)
@@ -836,6 +849,21 @@ def let_the_game_begin():
     pg.display.set_icon(pg.image.load('img/enemy_100px.png'))
     pg.display.set_caption("StopCovid19")
 
+
+def play_game():
+    '''
+    start game, return only if exit was pressed, or health = 0.
+
+    returns:
+        {
+            'score': score,
+            'level': level,
+        }
+    '''
+    global ENEMY_SPRITES, screen, WIDTH, HEIGHT, \
+            INFOBAR_HEIGHT, FPS, ONE_FRAME_DURATION,\
+            SCREEN_SIZE, BG_COLOR    
+
     ENEMY_SPRITES = pg.sprite.Group()
 
     enemies = get_enemies_for_level(1, enemy_sprites=ENEMY_SPRITES)
@@ -843,70 +871,19 @@ def let_the_game_begin():
 
     ENEMY_SPRITES.add(enemies)
 
-    run = 1
-    score_flag = 0
-
-    while run:
-        flag_2 = 0
-
-        #############################################
+    while True:
         pg.time.wait(ONE_FRAME_DURATION)
         # EXIT
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                SHOW_START_SCREEN = True
-
-                LAST_SCORE.append(player.score)
-                SAVE_RESPONSE.append('')
-                score_flag = 1
-                ENEMY_SPRITES = pg.sprite.Group()
-
-                enemies = get_enemies_for_level(1, enemy_sprites=ENEMY_SPRITES)
-                player = get_player_for_level(1, enemies=enemies)
-
-                ENEMY_SPRITES.add(enemies)
-                # run = 0
+                return {
+                    'score': player.score,
+                    'level': player.current_level,
+                    'finish_reason': 'quit',
+                }
 
         # UPDATE
         screen.fill(BG_COLOR)
-        #############################################
-
-        #############################################
-        #############################################
-
-        if SHOW_START_SCREEN:
-            if not score_flag:
-                if player.score != LAST_SCORE[-1]:
-                    LAST_SCORE.append(player.score)
-
-            res = handle_start_screen()
-            # print(res)
-
-            if res == 'start':
-                SHOW_START_SCREEN = False
-                flag_2 = 1
-
-            
-                LAST_SCORE.append(player.score)
-                SAVE_RESPONSE.append('')
-                score_flag = 1
-                ENEMY_SPRITES = pg.sprite.Group()
-
-                enemies = get_enemies_for_level(1, enemy_sprites=ENEMY_SPRITES)
-                player = get_player_for_level(1, enemies=enemies)
-
-                ENEMY_SPRITES.add(enemies)
-
-            elif res == 'exit':
-                run = False
-            elif res == 'save' and LAST_SCORE[-1] > 0:
-                handle_saving(player.current_level)
-            else:
-                continue
-
-
-        #############################################
-        #############################################
 
         # GIFT
         if (not player.gift) and (player.shoot_mode != 'shield'):
@@ -924,17 +901,17 @@ def let_the_game_begin():
         # PLAYER
         player.move_me_and_my_bullets(pressed_keys=pg.key.get_pressed())
         player.decrease_shield_time_by(ONE_FRAME_DURATION)  # if necessary
-        if player.health <= 0 and not flag_2:
+        if player.health <= 0:
             # print('Game Over, try again...')
-            LAST_SCORE.append(player.score)
-            SHOW_START_SCREEN = True
-            # run = False
+            return {
+                'score': player.score,
+                'level': player.current_level,
+                'finish_reason': 'game over',
+            }
 
         # NEXT ROUND
         if not player.enemies:
-            # update info and start new round
             # print(f'Round {player.current_level} Completed, Cool!...')
-
             ENEMY_SPRITES = pg.sprite.Group()
             enemies = get_enemies_for_level(level=player.current_level + 1, enemy_sprites=ENEMY_SPRITES)
             player = get_player_for_level(level=player.current_level + 1,
@@ -948,9 +925,24 @@ def let_the_game_begin():
         # SCREEN
         pg.display.update()
 
-    pg.quit()
-
 
 if __name__ == '__main__':
-    let_the_game_begin()
+    prepare_game_screen()
 
+    exit_info = {'score':0, 'level':0}
+
+    while True:
+        # GAME ICON WAS CLICKED
+        welcome_screen_answer = handle_welcome_screen(exit_info)
+
+        # RESTART GAME
+        if welcome_screen_answer == 'start game':
+            pass
+        # EXIT
+        elif welcome_screen_answer == 'exit':
+            break
+
+        # returns only if health <= 0 or player pressed X button
+        exit_info = play_game()
+
+    pg.quit()
