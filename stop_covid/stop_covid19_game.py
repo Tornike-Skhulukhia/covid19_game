@@ -759,11 +759,8 @@ def handle_welcome_screen(welcome_screen_info, score_save_resp):
 
 def save_data_in_external_db(data):
     import requests
-    from datetime import datetime
 
-    data.update({'time': datetime.today()})
-    # url = 'https://uct.ge/projects/covid19_game/save_data' 
-    url = 'http://localhost:5000/covid19_game/save_data'
+    url = 'https://uct.ge/projects/covid19_game/save_data/' 
 
     try:
         resp = requests.post(url, data)
