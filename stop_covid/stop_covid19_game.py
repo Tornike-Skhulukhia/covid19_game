@@ -751,7 +751,7 @@ def handle_welcome_screen(welcome_screen_info, score_save_resp):
 
         if start_btn.is_clicked(mouse_pos, left_click) or keys[pg.K_SPACE]:
             return 'start game'
-        elif exit_btn.is_clicked(mouse_pos, left_click):
+        elif exit_btn.is_clicked(mouse_pos, left_click) or keys[pg.K_e]:
             return 'exit'
         elif save_btn.is_clicked(mouse_pos, left_click):
             return 'save'
