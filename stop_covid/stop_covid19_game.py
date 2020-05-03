@@ -2,7 +2,7 @@
 import pygame as pg
 import random
 import time
-import numpy as np
+# import numpy as np
 import re
 import math
 from btn_temp import Button
@@ -113,8 +113,8 @@ class Enemy(pg.sprite.Sprite):
         if distance < self.radius + other.radius:
             tangent = math.atan2(dy, dx)
 
-            angle_1 = np.arctan2(self.get_center_y(), self.get_center_x())
-            angle_2 = np.arctan2(other.get_center_y(), other.get_center_x())
+            angle_1 = math.atan2(self.get_center_y(), self.get_center_x())
+            angle_2 = math.atan2(other.get_center_y(), other.get_center_x())
 
             speed_1 = (self.get_speed_x(), self.get_speed_y())
             speed_2 = (other.get_speed_x(), other.get_speed_y())
