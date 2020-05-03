@@ -760,7 +760,7 @@ def handle_welcome_screen(welcome_screen_info, score_save_resp):
 def save_data_in_external_db(data):
     import requests
 
-    url = 'https://uct.ge/projects/covid19_game/save_data/' 
+    url = 'https://uct.ge/covid19_game/save_data/' 
 
     try:
         resp = requests.post(url, data)
