@@ -3,10 +3,10 @@ I am not a game developer but working on it and seeing the result, given that of
 Hope you will enjoy. We Will Defeat It Together!
 
 ### This is the start screen, where you can save your score (which will become visible at https://uct.ge/covid19_game)
-![image info](./start_screen.png)
+![start_screen](./stop_covid/start_screen.png)
 
 ### And this is the screenshot of one level
-![image info](./game_image.png)
+![game_image](./stop_covid/game_image.png)
 
 ### Executable files ar available for Linux(https://uct.ge/covid19_game/download_game_file/linux/) and Windows(https://uct.ge/covid19_game/download_game_file/windows/)
 ### But the most reliable way to play without possible errors, would be to install Python(3.7+) with Pygame and Requests modules(to save your score).
