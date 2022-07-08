@@ -8,7 +8,10 @@ Hope you will enjoy. We Will Defeat It Together!
 ### And this is the screenshot of one level
 ![game_image](./stop_covid/game_image.png)
 
-### To play it, make sure to install Python(3.7+) with Pygame and Requests modules(to save your score).
+### To play it, make sure to install Python(3.7+) with Pygame and Requests modules(to save your score). After that, run main file from source directory
+```python
+python3 stop_covid19_game.py
+```
 
 ### Keys to know before starting:
 1) Move around - ARROW KEYS(←↑→↓)
